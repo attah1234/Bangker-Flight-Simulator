@@ -1,0 +1,306 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>Bangker Flight Simulator</title>
+<script type="text/javascript" src="gl-matrix-min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="gauge.min.js"></script>
+<script type="text/javascript" src="nouislider.min.js"></script>
+<script type="text/javascript" src="startup.js"></script>
+<script type="text/javascript" src="view.js"></script>
+<script type="text/javascript" src="terrain.js"></script>
+<script type="text/javascript" src="airplane.js"></script>
+<script type="text/javascript" src="misc.js"></script>
+<script type="text/javascript" src="interface.js"></script>
+<script type="text/javascript" src="physics.js"></script>
+<script type="text/javascript" src="webgl-debug.js"></script>
+<link rel="stylesheet" type="text/css" href="nouislider.min.css">
+</head>
+<body onload="startup();" style="height: 600px;">
+  <div id="instructions" onclick="document.getElementById('instructions').style.display = 'none';" style="position: absolute; width: 100%; height: 1200px; background-color: rgba(50, 50, 50, 0.8); z-index: 200; display: block;">
+    <div style="margin: auto; margin-top: 50px; padding: 20px; width: 80%; background-color: rgba(255,255,255,1.0);">
+      <h3>Instruksi: <small>(Klik di mana saja untuk menutup halaman ini)</small></h3>
+      <ul>
+        <li><p>Sasaran: Terbang melintasi pegunungan dan mendarat di landasan pacu di sisi lain.</p></li>
+        <li>Operasi: (Kunci di dalam tanda kurung adalah untuk yang kidal.)
+          <ul>
+            <li><p>Gunakan mouse di bagian<b><i> Kecepatan</i></b> untuk mengontrol gaya dorong (bergerak maju).<br>
+                   (Dorongan juga dapat dikontrol dengan kunci <b><i>X (L)</i></b> dan <b><i>Z (K)</i></b>)<p></li>
+            <li><p>Tekan <b><i>Panah atas (W)</i></b> dan <b><i>Panah bawah (S)</i></b> untuk mengkontrol <i>kecepatan pesawat</i>. Ini hanya bekerja ketika kecepatan cukup cepat untuk mengatasi gravitasi.</p></li>
+            <li><p>Tekan <b><i>Panah kiri (A)</i></b> dan <b><i>Panah kanan (D)</i></b> untuk mengkontrol <i>Kemiringan pesawat</i>. Itu hanya bekerja di udara. Saat pesawat berada di tanah, <i>mengoleng</i> (Arah) diubah sebagai gantinya.</p></li>
+            <li><p>Tekan <b><i>C (J)</i></b> atau klik pada <b><i>kecepatan</i></b> untuk mengaktifkan gaya dorong terbalik (digunakan untuk melambat setelah mendarat).</p></li>
+            <li><p>Tekan <b><i>R</i></b> untuk memulai kembali.</p></li>
+          </ul>
+        </li>
+        <li>Petunjuk berguna:
+          <ul>
+            <li><p>Saat lepas landas:</p>
+              <ol>
+                <li><p>Gunakan dorongan penuh (100%). Tahan tombol "Panah Atas (W)" sampai pesawat akhirnya meninggalkan tanah.</p></li>
+                <li><p>Kontrol Pitch menjadi sekitar +20 deg. Naik ke ketinggian sekitar 5.000 kaki.</p></li>
+                <li><p>Lakukan putar U besar dengan menyesuaikan Roll, dan Anda akan melihat pegunungan yang indah.</p></li>
+              </ol>
+            </li>
+            <li><p>Di udara:</p>
+              <ol>
+                <li><p>Kurangi dorong sedemikian rupa sehingga kecepatannya sekitar 200 knot. (Ini adalah kondisi mapan.)</p></li>
+                <li><p>Sesuaikan kecepatan untuk mencapai Tinggi yang diinginkan. Berhati-hatilah untuk tidak menabrak gunung.</p></li>
+                <li><p>Tepat setelah Anda melewati pegunungan, mulailah mengurangi hieght dan kecepatan untuk bersiap mendarat.</p></li>
+              </ol>
+            </li>
+            <li><p>Pendaratan:</p>
+              <ol>
+                <li><p>Putar balik U besar lagi. Arahkan landasan pacu dari jauh.</p></li>
+                <li><p>Kurangi ketinggian dengan menjaga Pitch sekitar -10 deg.</p></li>
+                <li><p>Ketika tingginya mendekati nol, kendalikan Pitch di sekitar 0 derajat dengan hati-hati agar Anda tidak menabrak laut. Jika ternyata Anda tidak bisa mengangkat nada, itu berarti kecepatan udara Anda terlalu lambat. (140-160 knot adalah nilai yang baik.)</p></li>
+                <li><p>Jika Anda menyentuh gorund terlalu keras atau dengan nada atau gulungan besar, Anda akan jatuh.</p></li>
+              </ol>
+            </li>
+            <li><p>Setelah pendaratan:</p>
+              <ol>
+                <li><p>Buat dorongan -100% untuk melambat.</p></li>
+                <li><p>Kontrol arah sehingga Anda tidak menabrak pegunungan.</p></li>
+                <li><p>Tidak apa-apa jika Anda tidak mendarat persis di landasan. Anda dapat berlayar ke landasan pacu setelah melambat.</p></li>
+                <li><p>Kondisi kemenangan sedemikian rupa sehingga Anda berhenti di landasan.</p></li>
+              </ol>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <h4><i>Akhirnya, latihan menjadi sempurna!</i></h4>
+    </div>
+  </div>
+  <div style="width: 520px; display: inline-block; vertical-align: top;">
+    <canvas id="myGLCanvas" width="500" height="500"></canvas>
+  </div>
+  <div style="display: inline-block; vertical-align: top;">
+    <h2>Bangker Flight Simulator!</h2>
+    <div>
+      Rintangan: 
+      <form action="" style="display: inline-block; margin-right: 20px;">
+        <input type="radio" name="obstacle" value="" onclick="setObstacleLevel(0);this.blur();" checked="checked"> Tidak ada
+        <input type="radio" name="obstacle" value="" onclick="setObstacleLevel(1);this.blur();"> Diam
+        <input type="radio" name="obstacle" value="" onclick="setObstacleLevel(2);this.blur();"> Bergerak
+      </form>
+      <a href="javascript:void(0);" onclick="document.getElementById('instructions').style.display = 'block';">Klik di sini untuk instruksi yang bermanfaat!</a>
+    </div>
+    <div><p>Status: <span id="msgDOM"> </span></p></div>
+    <div class="interfaceContainer">
+      <div class="interfaceDiv" style="width: 100px; border: 1px solid red; padding: 5px">
+        <h4>Kecepatan</h4>
+        <div id="thrustSlider" style="height:200px; margin: auto; margin-top: 20px; margin-bottom: 30px;"></div>
+        <p id="thrustSliderValue"> </p>
+        <button onclick="reverse=!reverse; this.style.borderStyle = (this.style.borderStyle!=='inset' ? 'inset' : 'outset'); " style="border-style: outset;" id="reverseButton">(digunakan setelah mendarat)</button>
+      </div>
+      <div class="interfaceDiv" style="margin-top: 5px; width: 70px;">
+        <h4>Tinggi</h4>
+        <div id="heightSlider" style="height:200px; margin: auto; margin-top: 20px; margin-bottom: 30px;"></div>
+        <p id="heightSliderValue"> </p>
+      </div>
+      <div class="interfaceDiv" style="margin-top: 5px; width: 70px;">
+        <h4>Kontrol</h4>
+        <div id="pitchSlider" style="height:200px; margin: auto; margin-top: 20px; margin-bottom: 30px;"></div>
+        <p id="pitchSliderValue"> </p>
+      </div>
+      <div style="display: inline-block; margin-top: 5px;">
+        <div class="interfaceDiv" style="width:240px;">
+          <h4>Kemiringan Pesawat</h4>
+          <div id="rollSlider" style="width:220px; margin: auto; margin-top: 35px; margin-bottom: 30px; "></div>
+          <p id="rollSliderValue"> </p>
+        </div>
+        <div class="interfaceDiv">
+          <h4>Kecepatan Horisontal</h4>
+          <canvas id="velocityGaugeCanvas" width="120" height="80"></canvas>
+          <p id="velocityGaugeValue"> </p>
+        </div>
+        <br>
+        <div class="interfaceDiv" style="margin-top: 5px; width:240px;">
+          <h4>Posisi dan Koordinat</h4>
+          <div style="position: relative; margin-left: 20px; width: 200px; height: 200px; border: 1px dashed gray; text-align: left; background-color: #c7ffc6;" id="positionDOM">
+          <img id="orientationCompass" src="https://maxcdn.icons8.com/Color/PNG/96/Maps/north_direction-96.png" title="North Direction" width="24" style="position: absolute; z-index: 100;">
+          <div style="position: absolute; width: 2px; height: 20px; background-color: brown; left: 99px; top: 180px"></div>
+          <div style="position: absolute; width: 2px; height: 20px; background-color: orange; left: 99px; top: 0px"></div>
+          </div>
+        </div>
+        <div class="interfaceDiv" style="margin-top: 5px;">
+          <h4>Bahan Bakar</h4>
+          <canvas id="fuelGaugeCanvas" width="120" height="80"></canvas>
+          <p id="fuelGaugeValue"> </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="shader_codes" style="display:none;">
+    <div id="terrainVertexShaderDOM">
+
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexColor;
+    attribute vec3 aVertexNormal;
+
+    uniform mat4 uPMatrix;
+    uniform mat4 uMVMatrix;
+
+    uniform vec3 uViewOrigin;
+    uniform vec3 uLightDirection;
+    uniform vec3 uAmbientLight;
+    uniform vec3 uDiffuseLight;
+    uniform vec3 uSpecularLight;
+
+    const float shininess = 12.0;     
+
+    varying vec4 vColor;
+
+    void main(void) {
+      gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+
+      vec3 normalizedLightDirection = normalize(uLightDirection);
+      vec3 vectorReflection = normalize( reflect(-normalizedLightDirection, aVertexNormal) );
+      vec3 vectorView = normalize( uViewOrigin - aVertexPosition );      
+
+      float diffuseLightWeighting = max( dot(aVertexNormal, normalizedLightDirection), 0.0 );
+      float specularLightWeighting = pow( max( dot(vectorReflection, vectorView), 0.0), shininess );
+
+      vColor= vec4( ( uAmbientLight * aVertexColor)
+                  + ((uDiffuseLight * aVertexColor) * diffuseLightWeighting)
+                  + ( uSpecularLight * specularLightWeighting),
+                  1.0 );   
+    }
+
+    </div>
+    <div id="terrainFragmentShaderDOM">
+
+    precision mediump float;
+
+    varying vec4 vColor;
+
+    void main(void) {
+      gl_FragColor = vColor;
+    }
+
+    </div>
+    <div id="airplaneVertexShaderDOM">
+
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexColor;
+    attribute vec3 aVertexNormal;
+
+    uniform mat4 uPMatrix;
+    uniform mat4 uMVMatrix;
+    uniform mat4 uModelMatrix;
+
+    varying vec3 vWorldPosition;
+    varying vec3 vWorldNormal;
+    varying vec3 vVertexColor;
+
+    void main(void) {
+      vec4 worldPosition = uModelMatrix * vec4(aVertexPosition, 1.0);
+      vWorldPosition = vec3(worldPosition);
+      vWorldNormal = normalize(mat3(uModelMatrix) * aVertexNormal);
+      vVertexColor = aVertexColor;
+      
+      gl_Position = uPMatrix * uMVMatrix * worldPosition;
+           
+    }
+
+    </div>
+    <div id="airplaneFragmentShaderDOM">
+
+    precision mediump float;
+
+    const float shininess = 50.0;
+
+    uniform vec3 uViewOrigin;
+    uniform vec3 uLightDirection;
+    uniform vec3 uAmbientLight;
+    uniform vec3 uDiffuseLight;
+    uniform vec3 uSpecularLight;   
+    
+    varying vec3 vWorldPosition;
+    varying vec3 vWorldNormal;
+    varying vec3 vVertexColor;
+
+    void main(void) {
+
+      vec3 worldPosition = vWorldPosition;
+      vec3 worldNormal = normalize(vWorldNormal);
+
+      vec3 normalizedLightDirection = normalize(uLightDirection);
+      vec3 vectorReflection = normalize( reflect(-normalizedLightDirection, worldNormal) );
+      vec3 vectorView = normalize( uViewOrigin - worldPosition );      
+
+      float diffuseLightWeighting = max( dot(worldNormal, normalizedLightDirection), 0.0 );
+      float specularLightWeighting = pow( max( dot(vectorReflection, vectorView), 0.0), shininess );
+
+      gl_FragColor = vec4( ( uAmbientLight * vVertexColor)
+                  + ((uDiffuseLight * vVertexColor) * diffuseLightWeighting)
+                  + ( uSpecularLight * specularLightWeighting),
+                  1.0 ); 
+    }
+
+    </div>
+    <div id="miscVertexShaderDOM">
+
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexColor;
+    attribute vec3 aVertexNormal;
+
+    uniform mat4 uPMatrix;
+    uniform mat4 uMVMatrix;
+
+    uniform vec3 uViewOrigin;
+    uniform vec3 uLightDirection;
+    uniform vec3 uAmbientLight;
+    uniform vec3 uDiffuseLight;
+    uniform vec3 uSpecularLight;   
+
+    varying vec4 vColor;
+
+    void main(void) {
+      gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+
+      vec3 normalizedLightDirection = normalize(uLightDirection);
+      vec3 vectorReflection = normalize( reflect(-normalizedLightDirection, aVertexNormal) );
+      vec3 vectorView = normalize( uViewOrigin - aVertexPosition );      
+
+      float diffuseLightWeighting = max( dot(aVertexNormal, normalizedLightDirection), 0.0 );
+
+      vColor= vec4( ( uAmbientLight * aVertexColor)
+                  + ((uDiffuseLight * aVertexColor) * diffuseLightWeighting),
+                  1.0 ); 
+      
+    }
+
+    </div>
+    <div id="miscFragmentShaderDOM">
+
+    precision mediump float;
+
+    varying vec4 vColor;
+
+    void main(void) {
+      gl_FragColor = vColor;
+    }
+
+    </div>
+
+  </div>
+
+  <style type="text/css">
+
+.interfaceDiv {
+  display: inline-block;
+  position: relative;
+  text-align: center;
+  vertical-align: top;
+}
+
+.interfaceDiv > * {
+  margin: 0px;
+}
+
+  </style>
+
+</body>
+
+</html>
